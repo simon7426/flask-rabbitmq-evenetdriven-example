@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    command: ['python', 'manage.py', 'run', "-h", "0.0.0.0"]
+    volumes:
+      - './server:/usr/src/app'
+    ports:
+      - 5004:5000
+    environment:
+      - FLASK_ENV=development
+      - APP_SETTINGS=project.config.DevelopmentConfig
+    depends_on:
+      - mysql
+      - rabbitmq
+    
+  mysql:
+    image: mysql:8.0.29-debian
+    environment:
+      - MYSQL_ROOT_PASSWORD=poridhiroot
+      - MYSQL_DATABASE=poridhi
+      - MYSQL_USER=poridhi
+      - MYSQL_PASSWORD=poridhi
+    volumes:
+      - ./my-data:/var/lib/mysql
+  
+  rabbitmq:
+    image: rabbitmq:3.10.5-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=poridhi
+      - RABBITMQ_DEFAULT_PASS=poridhi
+    ports:
+      - 5672:5672
+      - 15672:15672
+  
+  worker:
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    entrypoint: ["/usr/src/app/entrypoint.sh"]
+    environment:
+      - RABBITMQ_USER=poridhi
+      - RABBITMQ_PASSWORD=poridhi
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - rabbitmq
+      - mysql
+
+volumes:
+  my-data:
